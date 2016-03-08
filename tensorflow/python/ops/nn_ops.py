@@ -343,6 +343,9 @@ def _LRNGradShape(op):
 ops.RegisterShape("Softmax")(
     common_shapes.unchanged_shape_with_rank(2))
 
+ops.RegisterShape("LogSoftmax")(
+    common_shapes.unchanged_shape_with_rank(2))
+
 
 @ops.RegisterShape("InTopK")
 def _InTopKShape(op):

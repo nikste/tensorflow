@@ -615,6 +615,23 @@ softmax: Same shape as `logits`.
 
 // --------------------------------------------------------------------------
 
+REGISTER_OP("LogSoftmax")
+    .Input("logits: T")
+    .Output("logsoftmax: T")
+    .Attr("T: {float, double}")
+    .Doc(R"doc(
+Computes logsoftmax activations.
+
+For each batch `i` and class `j` we have
+
+    logsoftmax[i, j] = logits[i, j]) / sum(exp(logits[i])
+
+logits: 2-D with shape `[batch_size, num_classes]`.
+logsoftmax: Same shape as `logits`.
+)doc");
+
+// --------------------------------------------------------------------------
+
 REGISTER_OP("SoftmaxCrossEntropyWithLogits")
     .Input("features: T")
     .Input("labels: T")
