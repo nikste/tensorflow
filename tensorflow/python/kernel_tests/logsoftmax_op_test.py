@@ -30,7 +30,7 @@ class LogSoftmaxTest(tf.test.TestCase):
     batch_size = features.shape[batch_dim]
     e = np.exp(features -
                np.reshape(np.amax(features, axis=class_dim), [batch_size, 1]))
-    return e / np.reshape(np.sum(e, axis=class_dim), [batch_size, 1])
+    return np.log(e / np.reshape(np.sum(e, axis=class_dim), [batch_size, 1]))
 
   def _testLogSoftmax(self, np_features, use_gpu=False):
     np_logsoftmax = self._npLogSoftmax(np_features)
@@ -41,8 +41,8 @@ class LogSoftmaxTest(tf.test.TestCase):
     self.assertShapeEqual(np_logsoftmax, tf_logsoftmax)
     # Bonus check: the logsoftmaxes should add to one in each
     # batch element.
-    self.assertAllClose(np.ones(out.shape[0]),
-                        np.sum(out, axis=1))
+    #self.assertAllClose(np.ones(out.shape[0]),
+    #                    np.sum(out, axis=1))
 
   def _testAll(self, features):
     self._testLogSoftmax(features, use_gpu=False)
@@ -56,13 +56,12 @@ class LogSoftmaxTest(tf.test.TestCase):
     # Batch 1:
     # exps = [1., 2.718, 7.389, 20.085]
     # sum = 31.192
-    # LogSoftmaxes = exps / sum = [0.0320586, 0.08714432, 0.23688282, 0.64391426]
+    # LogSoftmaxes = log(exps / sum) = log([0.0320586, 0.08714432, 0.23688282, 0.64391426])
     np_sm = self._npLogSoftmax(np.array(features))
     self.assertAllClose(
-        np.array([[0.25, 0.25, 0.25, 0.25],
-                  [0.0320586, 0.08714432, 0.23688282, 0.64391426]]),
+        np.array([[-1.3862943611198906, -1.3862943611198906, -1.3862943611198906, -1.3862943611198906],[-3.4401898008764813, -2.4401896841257456, -1.4401896904977576, -0.44018969838721617]]),#[0.0320586, 0.08714432, 0.23688282, 0.64391426]]),
         np_sm,
-        rtol=1.e-5, atol=1.e-5)
+        rtol=1.e-3, atol=1.e-3)
 
   def testShapeMismatch(self):
     with self.assertRaises(ValueError):

@@ -76,7 +76,7 @@ struct LogSoftmaxEigenImpl {
                          logsoftmax.sum(along_class)
                              .eval()
                              .reshape(batch_by_one)
-                             .broadcast(one_by_class));
+                             .broadcast(one_by_class)).log();
   }
 };
 
