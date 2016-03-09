@@ -257,13 +257,79 @@ class UnsortedSegmentSumOp : public OpKernel {
     }
   }
 };
+// Similar to SegmentReductionOp but can handle unsorted segment definitions and
+// specifying size of output.
+template <typename Device, class T, class Index>
+class UnsortedSegmentMaxOp : public OpKernel {
+ public:
+  explicit UnsortedSegmentMaxOp(OpKernelConstruction* context)
+      : OpKernel(context) {}
+
+  void Compute(OpKernelContext* context) override {
+    const Tensor& data = context->input(0);
+    const Tensor& segment_ids = context->input(1);
+    const Tensor& num_segments = context->input(2);
+
+    OP_REQUIRES(
+        context, IsLegacyScalar(num_segments.shape()),
+        errors::InvalidArgument("num_segments should be a scalar, not shape ",
+                                num_segments.shape().DebugString()));
+    OP_REQUIRES(
+        context,
+        TensorShapeUtils::StartsWith(data.shape(), segment_ids.shape()),
+        errors::InvalidArgument("data.shape = ", data.shape().DebugString(),
+                                " does not start with segment_ids.shape = ",
+                                segment_ids.shape().DebugString()));
+
+    const auto segment_flat = segment_ids.flat<Index>();
+    const int32 N = segment_flat.dimension(0);
+    const Index output_rows =
+        internal::SubtleMustCopy(num_segments.scalar<int32>()());
+    OP_REQUIRES(context, output_rows >= 0,
+                errors::InvalidArgument("Input num_segments == ", output_rows,
+                                        " must not be negative."));
+
+    TensorShape output_shape;
+    output_shape.AddDim(output_rows);
+    for (int i = segment_ids.dims(); i < data.dims(); i++) {
+      output_shape.AddDim(data.dim_size(i));
+    }
+
+    Tensor* output = nullptr;
+    OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
+    auto output_flat = output->flat_outer_dims<T>();
+    output_flat.setZero();
+
+    if (data.NumElements() > 0) {
+      auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
+      auto max_vals = output->flat_outer_dims<T>();
+      max_vals.set(-999999.0);
+      for (int i = 0; i < N; ++i) {
+        Index j = internal::SubtleMustCopy(segment_flat(i));
+        OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
+                    errors::InvalidArgument(
+                        "segment_ids", SliceDebugString(segment_ids.shape(), i),
+                        " = ", j, " is out of range [0, ", output_rows, ")"));
+        if(data_flat.template chip<0>(i) > max_vals.template chip<0>(j)){
+          max_vals.template chip<0>(j) = data_flat.template chip<0>(i);
+          output_flat.template chip<0>(j) = data_flat.template chip<0>(i);
+        }
+      }
+    }
+  }
+};
 
 #define REGISTER_CPU_UNSORTED_KERNELS(type, index_type)                \
   REGISTER_KERNEL_BUILDER(Name("UnsortedSegmentSum")                   \
                               .Device(DEVICE_CPU)                      \
                               .TypeConstraint<type>("T")               \
                               .TypeConstraint<index_type>("Tindices"), \
-                          UnsortedSegmentSumOp<CPUDevice, type, index_type>);
+                          UnsortedSegmentSumOp<CPUDevice, type, index_type>); \
+  REGISTER_KERNEL_BUILDER(Name("UnsortedSegmentMax")                   \
+                              .Device(DEVICE_CPU)                      \
+                              .TypeConstraint<type>("T")               \
+                              .TypeConstraint<index_type>("Tindices"), \
+                          UnsortedSegmentMaxOp<CPUDevice, type, index_type>); \
 
 #define REGISTER_CPU_UNSORTED_KERNELS_ALL(type) \
   REGISTER_CPU_UNSORTED_KERNELS(type, int32);   \
