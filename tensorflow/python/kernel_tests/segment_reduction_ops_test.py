@@ -223,6 +223,96 @@ class UnsortedSegmentSumTest(SegmentReductionHelper):
             r"segment_ids\[0,0\] = %d is out of range \[0, 2\)" % bad[0][0]):
           unsorted.eval()
 
+class UnsortedSegmentMaxTest(SegmentReductionHelper):
+
+  def testValues(self):
+    dtypes = [tf.float32,
+              tf.float64,
+              tf.int64,
+              tf.int32]
+    indices_flat = np.array([0, 4, 0, 8, 3, 8, 4, 7, 7, 3])
+    num_segments = 12
+    for indices in indices_flat, indices_flat.reshape(5, 2):
+      shape = indices.shape + (2,)
+      for dtype in dtypes:
+        with self.test_session(use_gpu=False):
+          tf_x, np_x = self._input(shape, dtype=dtype)
+          np_ans = self._segmentReduce(indices,
+                                       np_x,
+                                       np.add,
+                                       op2=None,
+                                       num_out_rows=num_segments)
+          s = tf.unsorted_segment_max(data=tf_x,
+                                      segment_ids=indices,
+                                      num_segments=num_segments)
+          tf_ans = s.eval()
+        self._assertAllClose(indices, np_ans, tf_ans)
+        self.assertShapeEqual(np_ans, s)
+
+  def testGradient(self):
+    num_cols = 2
+    indices_flat = np.array([0, 4, 0, 8, 3, 8, 4, 7, 7, 3])
+    num_segments = max(indices_flat) + 3
+    for indices in indices_flat, indices_flat.reshape(5, 2):
+      shape = indices.shape + (num_cols,)
+      with self.test_session():
+        tf_x, np_x = self._input(shape, dtype=tf.float64)
+        s = tf.unsorted_segment_max(data=tf_x,
+                                    segment_ids=indices,
+                                    num_segments=num_segments)
+        jacob_t, jacob_n = tf.test.compute_gradient(
+            tf_x,
+            shape,
+            s,
+            [num_segments, num_cols],
+            x_init_value=np_x.astype(np.double),
+            delta=1)
+      self.assertAllClose(jacob_t, jacob_n, rtol=1e-3, atol=1e-3)
+
+  def testGradientMatchesSegmentMax(self):
+    # Strategy: compute the gradient for UnsortedSegmentSum and SegmentSum
+    # and compare the outputs, which should be identical.
+    # NB: for this test to work, indices must be valid for SegmentSum, namely
+    # it must be sorted, the indices must be contiguous, and num_segments
+    # must be max(indices) + 1.
+    indices = [0, 0, 1, 1, 1, 2, 3, 4, 5]
+    n = len(indices)
+    num_cols = 2
+    shape = [n, num_cols]
+    num_segments = max(indices) + 1
+    with self.test_session():
+      tf_x, np_x = self._input(shape, dtype=tf.float64)
+      # Results from UnsortedSegmentMax
+      unsorted_s = tf.unsorted_segment_max(data=tf_x,
+                                                 segment_ids=indices,
+                                                 num_segments=num_segments)
+      (unsorted_jacob_t, unsorted_jacob_n) = tf.test.compute_gradient(
+          tf_x,
+          shape,
+          unsorted_s,
+          [num_segments, num_cols],
+          x_init_value=np_x.astype(np.double),
+          delta=1)
+      # Results from SegmentSum
+      sorted_s = tf.segment_max(data=tf_x, segment_ids=indices)
+      sorted_jacob_t, sorted_jacob_n = tf.test.compute_gradient(
+          tf_x,
+          shape,
+          sorted_s,
+          [num_segments, num_cols],
+          x_init_value=np_x.astype(np.double),
+          delta=1)
+    self.assertAllClose(unsorted_jacob_t, sorted_jacob_t, rtol=1e-3, atol=1e-3)
+    self.assertAllClose(unsorted_jacob_n, sorted_jacob_n, rtol=1e-3, atol=1e-3)
+
+  def testBadIndices(self):
+    with self.test_session():
+      for bad in [[-1]], [[7]]:
+        unsorted = tf.unsorted_segment_max([[17]], bad, num_segments=2)
+        with self.assertRaisesOpError(
+            r"segment_ids\[0,0\] = %d is out of range \[0, 2\)" % bad[0][0]):
+          unsorted.eval()
+
 
 class SparseSegmentReductionHelper(SegmentReductionHelper):
 
