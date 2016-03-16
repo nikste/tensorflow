@@ -86,10 +86,16 @@ class SegmentReductionOpTest(SegmentReductionHelper):
     for dtype in dtypes:
       with self.test_session(use_gpu=False):
         tf_x, np_x = self._input(shape, dtype=dtype)
+        # print("tf_x",tf_x)
+        # print("np_x",np_x)
+        # print("indices:",indices)
         for np_op1, np_op2, tf_op in ops_list:
+          # print("testing:", np_op1,np_op2,tf_op)
           np_ans = self._segmentReduce(indices, np_x, np_op1, np_op2)
           s = tf_op(data=tf_x, segment_ids=indices)
           tf_ans = s.eval()
+          # print("np_ans:",np_ans)
+          # print("tf_ans:",tf_ans)
           self._assertAllClose(indices, np_ans, tf_ans)
           # NOTE(mrry): The static shape inference that computes
           # `tf_ans.shape` can only infer that sizes from dimension 1
@@ -147,6 +153,10 @@ class UnsortedSegmentSumTest(SegmentReductionHelper):
       for dtype in dtypes:
         with self.test_session(use_gpu=False):
           tf_x, np_x = self._input(shape, dtype=dtype)
+          # print("STARTED unsorted segmentsumtest:")
+          # print("tf_x",tf_x)
+          # print("np_x",np_x)
+          # print("indices",indices)
           np_ans = self._segmentReduce(indices,
                                        np_x,
                                        np.add,
@@ -156,6 +166,9 @@ class UnsortedSegmentSumTest(SegmentReductionHelper):
                                       segment_ids=indices,
                                       num_segments=num_segments)
           tf_ans = s.eval()
+          # print("tf_ans:",tf_ans)
+          # print("np_ans:",np_ans)
+          # print("FINISHED unsorted segementsumtest!")
         self._assertAllClose(indices, np_ans, tf_ans)
         self.assertShapeEqual(np_ans, s)
 
@@ -237,6 +250,9 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
       for dtype in dtypes:
         with self.test_session(use_gpu=False):
           tf_x, np_x = self._input(shape, dtype=dtype)
+          print("tf_x",tf_x)
+          print("np_x",np_x)
+          print("indices",indices)
           np_ans = self._segmentReduce(indices,
                                        np_x,
                                        np.add,
@@ -246,6 +262,8 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
                                       segment_ids=indices,
                                       num_segments=num_segments)
           tf_ans = s.eval()
+          print("np_ans:",np_ans)
+          print("tf_ans:",tf_ans)
         self._assertAllClose(indices, np_ans, tf_ans)
         self.assertShapeEqual(np_ans, s)
 

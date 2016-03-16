@@ -295,8 +295,6 @@ class UnsortedSegmentMaxOp : public OpKernel {
       output_shape.AddDim(data.dim_size(i));
     }
 
-
-
       // start fake code
       Tensor* output = nullptr;
       OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
@@ -305,14 +303,32 @@ class UnsortedSegmentMaxOp : public OpKernel {
 
       if (data.NumElements() > 0) {
           auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
+          // initialize with lowest value
           auto max_vals = output->flat_outer_dims<T>();
+          max_vals.setConstant(Eigen::NumTraits<T>::lowest());
+          std::cout<<"lowest no:" <<Eigen::NumTraits<T>::lowest()<<std::endl;
           for (int i = 0; i < N; ++i) {
               Index j = internal::SubtleMustCopy(segment_flat(i));
               OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
                           errors::InvalidArgument(
                                   "segment_ids", SliceDebugString(segment_ids.shape(), i),
                                   " = ", j, " is out of range [0, ", output_rows, ")"));
-              output_flat.template chip<0>(j) += data_flat.template chip<0>(i);
+//              std::cout << "iteration:" << i << " of " << N << std::endl;
+//              std::cout << "data_flat(" << i << ")=" << data_flat(i) << std::endl;
+//              std::cout << "max_vals(" << j << ")=" << max_vals(j) << std::endl;
+//              j == segment
+              std::cout << "i == " << i << " j == " << j << std::endl;
+              auto aux = data_flat.template chip<0>(j);
+              std::cout << "data_flat(i) = " << data_flat(i) << std::endl;
+              std::cout << "aux = " << aux << std::endl;
+              if(data_flat(i) > max_vals(j)){
+//                  std::cout << data_flat(i) << " > " << max_vals(j) << std::endl;
+                  max_vals(j) = data_flat(i);
+                  output_flat(j) = data_flat(i);
+//                  std::cout << "new vals : " << std::endl << " mf  " << j << "=" << max_vals(j) << std::endl << " df  " << i << "=" << data_flat(i) << std::endl;
+              }else{
+                output_flat(j) = 0;
+              }
           }
       }
 //    Tensor* output = nullptr;
