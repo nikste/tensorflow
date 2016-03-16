@@ -294,6 +294,10 @@ class UnsortedSegmentMaxOp : public OpKernel {
     for (int i = segment_ids.dims(); i < data.dims(); i++) {
       output_shape.AddDim(data.dim_size(i));
     }
+
+
+
+      // start fake code
       Tensor* output = nullptr;
       OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
       auto output_flat = output->flat_outer_dims<T>();
@@ -301,6 +305,7 @@ class UnsortedSegmentMaxOp : public OpKernel {
 
       if (data.NumElements() > 0) {
           auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
+          auto max_vals = output->flat_outer_dims<T>();
           for (int i = 0; i < N; ++i) {
               Index j = internal::SubtleMustCopy(segment_flat(i));
               OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
