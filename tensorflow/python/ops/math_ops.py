@@ -147,6 +147,7 @@ tf.segment_sum(c, tf.constant([0, 0, 1]))
 @@segment_mean
 
 @@unsorted_segment_sum
+@@unsorted_segment_max
 
 @@sparse_segment_sum
 @@sparse_segment_mean
@@ -1579,6 +1580,19 @@ def _SparseSegmentReductionGradShape(op):
 
 
 @ops.RegisterShape("UnsortedSegmentSum")
+def _UnsortedSegmentSumShape(op):
+  """Shape function for UnsortedSegmentSum."""
+  data_shape = op.inputs[0].get_shape()
+  segment_ids_shape = op.inputs[1].get_shape()
+  mid = segment_ids_shape.ndims
+  if mid is None:
+    return [tensor_shape.unknown_shape()]
+  else:
+    num_segments = tensor_util.constant_value(op.inputs[2])
+    return [tensor_shape.TensorShape([num_segments]).concatenate(
+        data_shape[mid:])]
+
+@ops.RegisterShape("UnsortedSegmentMax")
 def _UnsortedSegmentSumShape(op):
   """Shape function for UnsortedSegmentSum."""
   data_shape = op.inputs[0].get_shape()

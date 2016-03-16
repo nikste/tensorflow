@@ -175,6 +175,11 @@ def _UnsortedSegmentSumGrad(op, grad):
   """Gradient for SegmentSum."""
   return array_ops.gather(grad, op.inputs[1]), None, None
 
+@ops.RegisterGradient("UnsortedSegmentMax")
+def _UnsortedSegmentSumGrad(op, grad):
+  """Gradient for SegmentSum."""
+  return array_ops.gather(grad, op.inputs[1]), None, None
+
 
 @ops.RegisterGradient("Abs")
 def _AbsGrad(op, grad):
