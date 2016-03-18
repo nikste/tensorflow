@@ -296,118 +296,37 @@ class UnsortedSegmentMaxOp : public OpKernel {
       output_shape.AddDim(data.dim_size(i));
     }
 
-      // start fake code
-      Tensor* output = nullptr;
-      OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
-      auto output_flat = output->flat_outer_dims<T>();
-      output_flat.setZero();
+    // start fake code
+    Tensor* output = nullptr;
+    OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
+    auto output_flat = output->flat_outer_dims<T>();
+    output_flat.setZero();
 
-      std::cout << "output_rows:" << output_rows << std::endl;
-      std::cout << "data.NumElements:" << data.NumElements() << std::endl;
-      std::cout << "N:" << N << std::endl;
+    if (data.NumElements() > 0) {
+      auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
+      // initialize with lowest value
+      auto max_vals = output->flat_outer_dims<T>();
+      max_vals.setConstant(Eigen::NumTraits<T>::lowest());
 
-      std::cout << "output:" <<  output->dims() << std::endl;
-//      std::cout << "output_flat.NumElements();" << output_flat.NumElements() << std::endl;
-//      std::cout << m << std::endl;
-      if (data.NumElements() > 0) {
-          auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
-          // initialize with lowest value
-          auto max_vals = output->flat_outer_dims<T>();
-          max_vals.setConstant(Eigen::NumTraits<T>::lowest());
-          std::cout<<"lowest no:" <<Eigen::NumTraits<T>::lowest()<<std::endl;
+      // create output tensor with number of same size of input
+        // go through all elements in the first dimension (all rows)
+            // for all following dimensions
+            // compare with current value for this segment and this dimension
+            // if greater update this segment and this dimension in placeholder
 
+      // update output:
+        // go through segments
+        // update segment if occured for the first time (how to check this)
 
-          // create output tensor with number of same size of input
-            // go through all elements in the first dimension (all rows)
-                // for all following dimensions
-                // compare with current value for this segment and this dimension
-                // if greater update this segment and this dimension in placeholder
-
-          // update output:
-            // go through segments
-            // update segment if occured for the first time (how to check this)
-
-
-          for(int i = 0; i < N; ++i){
-              Index j = internal::SubtleMustCopy(segment_flat(i));
-              OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
-                          errors::InvalidArgument(
-                                  "segment_ids", SliceDebugString(segment_ids.shape(), i),
-                                  " = ", j, " is out of range [0, ", output_rows, ")"));
-//              auto segment_part = data_flat(j);
-//              Tensor* chipped = nullptr;
-//              OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &chipped));
-              std::cout << "j=" << j << std::endl;
-              auto c = data_flat.template chip<0>(i);
-              Eigen::Tensor<c.template> chipped = c;
-              std::cout << "chippedsize:" << chipped.size() << std::endl;
-              std::cout << chipped << std::endl;
-//              auto chipped = data_flat.slice();//data_flat.template chip<0>(i);
-//              data_flat.slice()
-
-//              std::cout << "a(1, 2): " << chipped(1, 2) << std::endl;
-
-
-//              std::cout << "data_flat.template chip<0>(i):" << std::endl << chipped(0) << std::endl;
-          }
-
-//          for (int i = 0; i < N; ++i) {
-//              Index j = internal::SubtleMustCopy(segment_flat(i));
-//              OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
-//                          errors::InvalidArgument(
-//                                  "segment_ids", SliceDebugString(segment_ids.shape(), i),
-//                                  " = ", j, " is out of range [0, ", output_rows, ")"));
-////              std::cout << "iteration:" << i << " of " << N << std::endl;
-////              std::cout << "data_flat(" << i << ")=" << data_flat(i) << std::endl;
-////              std::cout << "max_vals(" << j << ")=" << max_vals(j) << std::endl;
-////              j == segment
-//
-//              std::cout << "i == " << i << " j == " << j << std::endl;
-//
-////              output_rows == 12
-////              N == num_rows == 10
-////              [1,2]
-////              [3,4]
-////              [5,6]
-////              ..
-////              [19,20]
-//
-//
-//
-////              auto aux = data_flat.template chip<0>(j);
-////              std::cout << "data_flat(i) = " << data_flat(i) << std::endl;
-////              std::cout << "aux = " << aux << std::endl;
-//////              if(data_flat(i) > max_vals(j)){
-//////                  std::cout << data_flat(i) << " > " << max_vals(j) << std::endl;
-////                  max_vals(j) = data_flat(i);
-////                  output_flat(j) = data_flat(i);
-//////                  std::cout << "new vals : " << std::endl << " mf  " << j << "=" << max_vals(j) << std::endl << " df  " << i << "=" << data_flat(i) << std::endl;
-////              }else{
-////                output_flat(j) = 0;
-////              }
-//          }
+      for(int i = 0; i < N; ++i){
+        Index j = internal::SubtleMustCopy(segment_flat(i));
+        OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
+                    errors::InvalidArgument(
+                            "segment_ids", SliceDebugString(segment_ids.shape(), i),
+                            " = ", j, " is out of range [0, ", output_rows, ")"));
+        output_flat.template chip<0>(j) = data_flat.template chip<0>(i).cwiseMax(output_flat.template chip<0>(j));
       }
-//    Tensor* output = nullptr;
-//    OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
-//    auto output_flat = output->flat_outer_dims<T>();
-//    output_flat.setZero();
-//
-//    if (data.NumElements() > 0) {
-//      auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
-//      auto max_vals = output->flat_outer_dims<T>();
-//      max_vals.set(-999999.0);
-//      for (int i = 0; i < N; ++i) {
-//        Index j = internal::SubtleMustCopy(segment_flat(i));
-//        OP_REQUIRES(context, FastBoundsCheck(j, output_rows),
-//                    errors::InvalidArgument(
-//                        "segment_ids", SliceDebugString(segment_ids.shape(), i),
-//                        " = ", j, " is out of range [0, ", output_rows, ")"));
-//        if(data_flat.template chip<0>(i) > max_vals.template chip<0>(j)){
-//          max_vals.template chip<0>(j) = data_flat.template chip<0>(i);
-//          output_flat.template chip<0>(j) = data_flat.template chip<0>(i);
-//        }
-//      }
-//    }
+    }
   }
 };
 
