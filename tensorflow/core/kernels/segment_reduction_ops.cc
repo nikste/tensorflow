@@ -305,8 +305,9 @@ class UnsortedSegmentMaxOp : public OpKernel {
     if (data.NumElements() > 0) {
       auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
       // initialize with lowest value
-      auto max_vals = output->flat_outer_dims<T>();
-      max_vals.setConstant(Eigen::NumTraits<T>::lowest());
+//      auto max_vals = output->flat_outer_dims<T>();
+      //max_vals.setConstant(Eigen::NumTraits<T>::lowest());
+//      max_vals.setConstant(Eigen::NumTraits<T>::lowest());
 
       // create output tensor with number of same size of input
         // go through all elements in the first dimension (all rows)
