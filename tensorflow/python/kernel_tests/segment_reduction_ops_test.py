@@ -34,33 +34,34 @@ class SegmentReductionHelper(tf.test.TestCase):
                                 dtype=dtype), np_values
 
   def _segmentReduce(self, indices, x, op1, op2=None, num_out_rows=None,dtype=tf.int32):
-    if not x.size: return np.array([])
-    indices = np.asarray(indices)
-    if num_out_rows is None:
-      num_out_rows = indices[-1] + 1
-    output = [None] * num_out_rows
-    slice_shape = x.shape[indices.ndim:]
-    x_flat = x.reshape((indices.size,) + slice_shape)
-    for i, index in enumerate(indices.ravel()):
-      if (output[index] is not None) and op1 == np.max:
+      if not x.size: return np.array([])
+      indices = np.asarray(indices)
+      if num_out_rows is None:
+          num_out_rows = indices[-1] + 1
+      output = [None] * num_out_rows
+      slice_shape = x.shape[indices.ndim:]
+      x_flat = x.reshape((indices.size,) + slice_shape)
+      for i, index in enumerate(indices.ravel()):
+          if (output[index] is not None) and op1 == np.max:
 
-        for j in range(0,output[index].shape[0]):
-          output[index][j] = op1([output[index][j], x_flat[i][j]])
-      elif output[index] is not None:
-        output[index] = op1(output[index], x_flat[i])
-      else:
-        output[index] = x_flat[i]
-    # zero initialize values that are still uncalcuated.
-    if not op1 == np.max:
+              for j in range(0,output[index].shape[0]):
+                  output[index][j] = op1([output[index][j], x_flat[i][j]])
+          elif output[index] is not None:
+              output[index] = op1(output[index], x_flat[i])
+          else:
+              output[index] = x_flat[i]
+      # zero initialize values that are still uncalcuated.
       output = [o if o is not None else np.zeros(slice_shape) for o in output]
-    else:
-      zeroslice = np.zeros(slice_shape)
-      zeroslice.fill(dtype.min)
-      output = [o if o is not None else zeroslice for o in output]
-    if op2 is not None:
-      output = [op2(o) for o in output]
-    output = [o.reshape(slice_shape) for o in output]
-    return np.array(output)
+      # if not op1 == np.max:
+      #     output = [o if o is not None else np.zeros(slice_shape) for o in output]
+      # else:
+      #   zeroslice = np.zeros(slice_shape)
+      #   zeroslice.fill(dtype.min)
+      #   output = [o if o is not None else zeroslice for o in output]
+      if op2 is not None:
+          output = [op2(o) for o in output]
+      output = [o.reshape(slice_shape) for o in output]
+      return np.array(output)
 
   def _assertAllClose(self, indices, np_x, tf_x):
     for i in set(np.asarray(indices).ravel()):
@@ -239,8 +240,15 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
               tf.float64,
               tf.int64,
               tf.int32]
+    indices_flat = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5,5])
+    num_segments = 6#n = len(indices)
+    # num_cols = 2
+    # shape = [n, num_cols]
+    # num_segments = max(indices) + 1
     indices_flat = np.array([0, 4, 0, 8, 3, 8, 4, 7, 7, 3])
     num_segments = 12
+    # for indices in indices_flat, indices_flat.reshape(5, 2):
+
     for indices in indices_flat, indices_flat.reshape(5, 2):
       shape = indices.shape + (2,)
       for dtype in dtypes:
@@ -256,8 +264,15 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
                                       segment_ids=indices,
                                       num_segments=num_segments)
           tf_ans = s.eval()
+          # print("np_ans",np_ans)
+          # print("s",s)
         self._assertAllClose(indices, np_ans, tf_ans)
         self.assertShapeEqual(np_ans, s)
+
+  def printmulti(self,x,y):
+    for r in range(0,x.shape[0]):
+      print("n:",x[r])
+      print("t:",y[r])
 
   def testGradient(self):
     num_cols = 2
@@ -277,12 +292,20 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
             [num_segments, num_cols],
             x_init_value=np_x.astype(np.double),
             delta=1)
+        # print("tf_x")
+        # self.printmulti(tf_x)
+        # print("np_x")
+        # print(np_x)
+        # print("jacob_t,jacob_n, linewise")
+        self.printmulti(jacob_t,jacob_n)
+
+
       self.assertAllClose(jacob_t, jacob_n, rtol=1e-3, atol=1e-3)
 
   def testGradientMatchesSegmentMax(self):
-    # Strategy: compute the gradient for UnsortedSegmentSum and SegmentSum
+    # Strategy: compute the gradient for UnsortedSegmentMax and SegmentMax
     # and compare the outputs, which should be identical.
-    # NB: for this test to work, indices must be valid for SegmentSum, namely
+    # NB: for this test to work, indices must be valid for SegmentMax, namely
     # it must be sorted, the indices must be contiguous, and num_segments
     # must be max(indices) + 1.
     indices = [0, 0, 1, 1, 1, 2, 3, 4, 5]
@@ -296,7 +319,7 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
       unsorted_s = tf.unsorted_segment_max(data=tf_x,
                                                  segment_ids=indices,
                                                  num_segments=num_segments)
-      (unsorted_jacob_t, unsorted_jacob_n) = tf.test.compute_gradient(
+      unsorted_jacob_t, unsorted_jacob_n = tf.test.compute_gradient(
           tf_x,
           shape,
           unsorted_s,
@@ -305,6 +328,9 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
           delta=1)
       # Results from SegmentSum
       sorted_s = tf.segment_max(data=tf_x, segment_ids=indices)
+      us = unsorted_s.eval()
+      ss = sorted_s.eval()
+
       sorted_jacob_t, sorted_jacob_n = tf.test.compute_gradient(
           tf_x,
           shape,
@@ -312,8 +338,17 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
           [num_segments, num_cols],
           x_init_value=np_x.astype(np.double),
           delta=1)
-    self.assertAllClose(unsorted_jacob_t, sorted_jacob_t, rtol=1e-3, atol=1e-3)
-    self.assertAllClose(unsorted_jacob_n, sorted_jacob_n, rtol=1e-3, atol=1e-3)
+      print("unsorted_s",us)
+      print("sorted_s",ss)
+      print("unsorted_jacob_t",unsorted_jacob_n)
+      print("sorted_jacob_t",sorted_jacob_t)
+      print("unsorted_jacob_n",unsorted_jacob_t)
+      print("sorted_jacob_n",sorted_jacob_n)
+
+    #   print("unsorted_s:",unsorted_s)
+    #   print("sorted_s:",sorted_s)
+    # self.assertAllClose(unsorted_jacob_t, sorted_jacob_t, rtol=1e-3, atol=1e-3)
+    # self.assertAllClose(unsorted_jacob_n, sorted_jacob_n, rtol=1e-3, atol=1e-3)
 
   def testBadIndices(self):
     with self.test_session():

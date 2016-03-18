@@ -176,8 +176,8 @@ def _UnsortedSegmentSumGrad(op, grad):
   return array_ops.gather(grad, op.inputs[1]), None, None
 
 @ops.RegisterGradient("UnsortedSegmentMax")
-def _UnsortedSegmentSumGrad(op, grad):
-  """Gradient for SegmentSum."""
+def _UnsortedSegmentMaxGrad(op, grad):
+  """Gradient for SegmentMax."""
   return array_ops.gather(grad, op.inputs[1]), None, None
 
 

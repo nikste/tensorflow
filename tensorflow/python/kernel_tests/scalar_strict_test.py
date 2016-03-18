@@ -103,6 +103,10 @@ class ScalarStrictTest(tf.test.TestCase):
     self.check(tf.unsorted_segment_sum, (7, 1, [4]),
                'num_segments should be a scalar', [0, 7, 0, 0])
 
+  def testUnsortedSegmentMax(self):
+    self.check(tf.unsorted_segment_max, (7, 1, [4]),
+               'num_segments should be a scalar', [0, 7, 0, 0])
+
   def testRange(self):
     self.check(tf.range, ([0], 3, 2), 'start must be a scalar', [0, 2])
     self.check(tf.range, (0, [3], 2), 'limit must be a scalar', [0, 2])

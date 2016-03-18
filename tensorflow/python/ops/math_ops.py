@@ -1593,8 +1593,8 @@ def _UnsortedSegmentSumShape(op):
         data_shape[mid:])]
 
 @ops.RegisterShape("UnsortedSegmentMax")
-def _UnsortedSegmentSumShape(op):
-  """Shape function for UnsortedSegmentSum."""
+def _UnsortedSegmentMaxShape(op):
+  """Shape function for UnsortedSegmentMax."""
   data_shape = op.inputs[0].get_shape()
   segment_ids_shape = op.inputs[1].get_shape()
   mid = segment_ids_shape.ndims
