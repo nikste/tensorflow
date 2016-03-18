@@ -304,21 +304,7 @@ class UnsortedSegmentMaxOp : public OpKernel {
 
     if (data.NumElements() > 0) {
       auto data_flat = data.shaped<T, 2>({N, data.NumElements() / N});
-      // initialize with lowest value
-//      auto max_vals = output->flat_outer_dims<T>();
-      //max_vals.setConstant(Eigen::NumTraits<T>::lowest());
-//      max_vals.setConstant(Eigen::NumTraits<T>::lowest());
-
-      // create output tensor with number of same size of input
-        // go through all elements in the first dimension (all rows)
-            // for all following dimensions
-            // compare with current value for this segment and this dimension
-            // if greater update this segment and this dimension in placeholder
-
-      // update output:
-        // go through segments
-        // update segment if occured for the first time (how to check this)
-
+        
       for(int i = 0; i < N; ++i){
         Index j = internal::SubtleMustCopy(segment_flat(i));
         OP_REQUIRES(context, FastBoundsCheck(j, output_rows),

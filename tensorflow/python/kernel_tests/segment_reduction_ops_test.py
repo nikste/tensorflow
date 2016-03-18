@@ -29,7 +29,10 @@ class SegmentReductionHelper(tf.test.TestCase):
     for x in input_shape:
       num_elem *= x
     values = np.arange(1, num_elem + 1)
+    # values = np.array([20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1])
+    # values = np.array([5,5,5,5,5,5,5,5,5,5,55,5,5,5,5,5,5,5,55,5])
     np_values = values.reshape(input_shape).astype(dtype.as_numpy_dtype)
+
     return tf.constant(values, shape=input_shape,
                                 dtype=dtype), np_values
 
@@ -240,8 +243,8 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
               tf.float64,
               tf.int64,
               tf.int32]
-    indices_flat = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5,5])
-    num_segments = 6#n = len(indices)
+    # indices_flat = np.array([0, 0, 1, 1, 1, 2, 3, 4, 5,5])
+    # num_segments = 6#n = len(indices)
     # num_cols = 2
     # shape = [n, num_cols]
     # num_segments = max(indices) + 1
@@ -265,7 +268,7 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
                                       num_segments=num_segments)
           tf_ans = s.eval()
           # print("np_ans",np_ans)
-          # print("s",s)
+          # print("tf_ans",tf_ans)
         self._assertAllClose(indices, np_ans, tf_ans)
         self.assertShapeEqual(np_ans, s)
 
@@ -308,7 +311,7 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
     # NB: for this test to work, indices must be valid for SegmentMax, namely
     # it must be sorted, the indices must be contiguous, and num_segments
     # must be max(indices) + 1.
-    indices = [0, 0, 1, 1, 1, 2, 3, 4, 5]
+    indices = [0, 0, 1, 1, 1, 2, 3, 4, 5,5]
     n = len(indices)
     num_cols = 2
     shape = [n, num_cols]
@@ -340,9 +343,9 @@ class UnsortedSegmentMaxTest(SegmentReductionHelper):
           delta=1)
       print("unsorted_s",us)
       print("sorted_s",ss)
-      print("unsorted_jacob_t",unsorted_jacob_n)
+      print("unsorted_jacob_t",unsorted_jacob_t)
       print("sorted_jacob_t",sorted_jacob_t)
-      print("unsorted_jacob_n",unsorted_jacob_t)
+      print("unsorted_jacob_n",unsorted_jacob_n)
       print("sorted_jacob_n",sorted_jacob_n)
 
     #   print("unsorted_s:",unsorted_s)
