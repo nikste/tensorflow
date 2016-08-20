@@ -22,6 +22,7 @@ py_tests(
         "as_string_op_test.py",
         "attention_ops_test.py",
         "barrier_ops_test.py",
+        "base64_ops_test.py",
         "bcast_ops_test.py",
         "benchmark_test.py",
         "candidate_sampler_ops_test.py",
@@ -188,6 +189,7 @@ cuda_py_tests(
         "conv_ops_test.py",
         "depthwise_conv_op_test.py",  # http://b/30603882
         "division_future_test.py",
+        "extract_image_patches_grad_test.py",
         "fft_ops_test.py",
         "pooling_ops_3d_test.py",  # http://b/30600785
         "pooling_ops_test.py",

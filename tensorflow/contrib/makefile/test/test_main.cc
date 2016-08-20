@@ -13,24 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_CORE_PLATFORM_B64_H_
-#define TENSORFLOW_CORE_PLATFORM_B64_H_
+// A program with a main that is suitable for unittests
+// This is designed to be used unittests built by Makefile
 
-#include <string>
-#include "tensorflow/core/lib/core/status.h"
+#include <iostream>
+#include "tensorflow/core/platform/test.h"
 
-namespace tensorflow {
+GTEST_API_ int main(int argc, char** argv) {
+  std::cout << "Running main() from test_main.cc" << std::endl;
+  testing::InitGoogleTest(&argc, argv);
 
-/// \brief Converts data into base64 encoding.
-///
-/// See https://en.wikipedia.org/wiki/Base64
-Status Base64Encode(StringPiece data, string* encoded);
-
-/// \brief Converts data from base64 encoding.
-///
-/// See https://en.wikipedia.org/wiki/Base64
-Status Base64Decode(StringPiece data, string* decoded);
-
-}  // namespace tensorflow
-
-#endif  // TENSORFLOW_CORE_PLATFORM_B64_H_
+  return RUN_ALL_TESTS();
+}
