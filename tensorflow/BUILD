@@ -35,6 +35,14 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "ios",
+    values = {
+        "crosstool_top": "//tools/osx/crosstool:crosstool",
+    },
+    visibility = ["//visibility:public"],
+)
+
 package_group(
     name = "internal",
     packages = [
@@ -105,6 +113,7 @@ filegroup(
         "//tensorflow/contrib/slim/python/slim/data:all_files",
         "//tensorflow/contrib/tensor_forest:all_files",
         "//tensorflow/contrib/testing:all_files",
+        "//tensorflow/contrib/training:all_files",
         "//tensorflow/contrib/util:all_files",
         "//tensorflow/core:all_files",
         "//tensorflow/core/debug:all_files",
@@ -134,6 +143,7 @@ filegroup(
         "//tensorflow/models/rnn/ptb:all_files",
         "//tensorflow/models/rnn/translate:all_files",
         "//tensorflow/python:all_files",
+        "//tensorflow/python/debug:all_files",
         "//tensorflow/python/kernel_tests:all_files",
         "//tensorflow/python/tools:all_files",
         "//tensorflow/tensorboard:all_files",

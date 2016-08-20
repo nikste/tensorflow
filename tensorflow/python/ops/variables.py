@@ -105,7 +105,7 @@ class Variable(object):
   `all_variables()` returns the contents of that collection.
 
   When building a machine learning model it is often convenient to distinguish
-  betwen variables holding the trainable model parameters and other variables
+  between variables holding the trainable model parameters and other variables
   such as a `global step` variable used to count training steps. To make this
   easier, the variable constructor supports a `trainable=<bool>` parameter. If
   `True`, the new variable is also added to the graph collection
@@ -186,9 +186,6 @@ class Variable(object):
         If `None`, either the datatype will be kept (if `initial_value` is
         a Tensor), or `convert_to_tensor` will decide.
 
-    Returns:
-      A Variable.
-
     Raises:
       ValueError: If both `variable_def` and initial_value are specified.
       ValueError: If the initial value is not specified, or does not have a
@@ -262,8 +259,8 @@ class Variable(object):
     if trainable and ops.GraphKeys.TRAINABLE_VARIABLES not in collections:
       collections = list(collections) + [ops.GraphKeys.TRAINABLE_VARIABLES]
     with ops.control_dependencies(None):
-      with ops.op_scope(
-          [] if init_from_fn else [initial_value], name, "Variable") as name:
+      with ops.name_scope(name, "Variable",
+                          [] if init_from_fn else [initial_value]) as name:
 
         # Get the initial value from a callable function. The real shape of the
         # variable will be set later, since under the init_from_fn case, the
@@ -858,6 +855,17 @@ def all_variables():
   return ops.get_collection(ops.GraphKeys.VARIABLES)
 
 
+def _all_saveable_objects():
+  """Returns all variables and `SaveableObject`s that must be checkpointed.
+
+  Returns:
+    A list of `Variable` and `SaveableObject` to be checkpointed
+  """
+  # TODO(andreasst): make this function public once things are settled.
+  return ops.get_collection(ops.GraphKeys.VARIABLES) + ops.get_collection(
+      ops.GraphKeys.SAVEABLE_OBJECTS)
+
+
 def trainable_variables():
   """Returns all variables created with `trainable=True`.
 
@@ -999,7 +1007,7 @@ def assert_variables_initialized(var_list=None):
     ranks = []
     for var in var_list:
       with ops.colocate_with(var.op):
-        ranks.append(array_ops.rank(var))
+        ranks.append(array_ops.rank_internal(var, optimize=False))
     if len(ranks) == 1:
       return ranks[0]
     else:
@@ -1019,17 +1027,17 @@ def report_uninitialized_variables(var_list=None,
     name: Optional name of the `Operation`.
 
   Returns:
-    A 1-D tensor containing names of the unintialized variables, or an empty 1-D
+    A 1-D tensor containing names of the uninitialized variables, or an empty 1-D
     tensor if there are no variables or no uninitialized variables.
   """
   if var_list is None:
     var_list = all_variables() + local_variables()
-  # Backwards compatibility for old-style variables. TODO(touts): remove.
-  if not var_list:
-    var_list = []
-    for op in ops.get_default_graph().get_operations():
-      if op.type in ["Variable", "AutoReloadVariable"]:
-        var_list.append(op.outputs[0])
+    # Backwards compatibility for old-style variables. TODO(touts): remove.
+    if not var_list:
+      var_list = []
+      for op in ops.get_default_graph().get_operations():
+        if op.type in ["Variable", "AutoReloadVariable"]:
+          var_list.append(op.outputs[0])
   if not var_list:
     # Return an empty tensor so we only need to check for returned tensor
     # size being 0 as an indication of model ready.

@@ -852,6 +852,17 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "function_ops",
+    prefix = "function_ops",
+    deps = [
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+    ],
+)
+
 tf_kernel_libraries(
     name = "image",
     prefixes = [
@@ -1545,6 +1556,7 @@ tf_kernel_libraries(
         "decode_csv_op",
         "decode_raw_op",
         "example_parsing_ops",
+        "parse_tensor_op",
         "string_to_number_op",
     ],
     deps = [
@@ -1692,6 +1704,7 @@ tf_kernel_libraries(
         "string_to_hash_bucket_op",
         "reduce_join_op",
         "string_join_op",
+        "string_split_op",
         "as_string_op",
     ],
     deps = [
@@ -1817,6 +1830,20 @@ filegroup(
         "bounds_check.h",
         "cast_op.cc",
         "cast_op.h",
+        "cast_op_impl.h",
+        "cast_op_impl_bfloat.cc",
+        "cast_op_impl_bool.cc",
+        "cast_op_impl_complex128.cc",
+        "cast_op_impl_complex64.cc",
+        "cast_op_impl_double.cc",
+        "cast_op_impl_float.cc",
+        "cast_op_impl_half.cc",
+        "cast_op_impl_int16.cc",
+        "cast_op_impl_int32.cc",
+        "cast_op_impl_int64.cc",
+        "cast_op_impl_int8.cc",
+        "cast_op_impl_uint16.cc",
+        "cast_op_impl_uint8.cc",
         "concat_lib.h",
         "concat_lib_cpu.cc",
         "concat_lib_cpu.h",
@@ -1832,6 +1859,7 @@ filegroup(
         "example_parsing_ops.cc",
         "fill_functor.cc",
         "fill_functor.h",
+        "function_ops.cc",
         "gather_op.cc",
         "gather_op.h",
         "identity_op.cc",
@@ -1912,7 +1940,8 @@ filegroup(
         "save_restore_tensor.h",
         "softplus_op.h",
         "softsign_op.h",
-        "tile_ops.h",
+        "tile_ops_cpu_impl.h",
+        "tile_ops_impl.h",
         "training_ops.h",
         "transpose_functor.h",
         "transpose_op.h",
@@ -1991,6 +2020,11 @@ filegroup(
         "stack_ops.cc",
         "summary_op.cc",
         "tile_ops.cc",
+        "tile_ops_cpu_impl_1.cc",
+        "tile_ops_cpu_impl_2.cc",
+        "tile_ops_cpu_impl_3.cc",
+        "tile_ops_cpu_impl_4.cc",
+        "tile_ops_cpu_impl_5.cc",
         "topk_op.cc",
         "training_ops.cc",
         "transpose_functor_cpu.cc",

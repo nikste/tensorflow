@@ -53,7 +53,7 @@ def assert_close(
     return check_ops.assert_equal(
         x, y, data=data, summarize=summarize, message=message, name=name)
 
-  with ops.op_scope([x, y, data], name, "assert_close"):
+  with ops.name_scope(name, "assert_close", [x, y, data]):
     tol = np.finfo(x.dtype.as_numpy_dtype).resolution
     if data is None:
       data = [
@@ -90,6 +90,12 @@ def assert_integer_form(
       data=data, summarize=summarize, message=message, name=name)
 
 
+def assert_symmetric(matrix):
+  matrix_t = array_ops.batch_matrix_transpose(matrix)
+  return control_flow_ops.with_dependencies(
+      [check_ops.assert_equal(matrix, matrix_t)], matrix)
+
+
 def get_logits_and_prob(
     logits=None, p=None, multidimensional=False, validate_args=True, name=None):
   """Converts logits to probabilities and vice-versa, and returns both.
@@ -119,7 +125,7 @@ def get_logits_and_prob(
   elif p is not None and logits is not None:
     raise ValueError("Must pass either p or logits, not both.")
   elif p is None:
-    with ops.op_scope([logits], name):
+    with ops.name_scope(name, values=[logits]):
       logits = array_ops.identity(logits, name="logits")
     with ops.name_scope(name):
       with ops.name_scope("p"):
@@ -169,9 +175,70 @@ def log_combinations(n, counts, name="log_combinations"):
   # In general, this is (sum counts)! / sum(counts!)
   # The sum should be along the last dimension of counts.  This is the
   # "distribution" dimension. Here n a priori represents the sum of counts.
-  with ops.op_scope([n, counts], name):
+  with ops.name_scope(name, values=[n, counts]):
     total_permutations = math_ops.lgamma(n + 1)
     counts_factorial = math_ops.lgamma(counts + 1)
     redundant_permutations = math_ops.reduce_sum(counts_factorial,
                                                  reduction_indices=[-1])
     return total_permutations - redundant_permutations
+
+
+def batch_matrix_diag_transform(matrix, transform=None, name=None):
+  """Transform diagonal of [batch-]matrix, leave rest of matrix unchanged.
+
+  Create a trainable covariance defined by a Cholesky factor:
+
+  ```python
+  # Transform network layer into 2 x 2 array.
+  matrix_values = tf.contrib.layers.fully_connected(activations, 4)
+  matrix = tf.reshape(matrix_values, (batch_size, 2, 2))
+
+  # Make the diagonal positive.  If the upper triangle was zero, this would be a
+  # valid Cholesky factor.
+  chol = batch_matrix_diag_transform(matrix, transform=tf.nn.softplus)
+
+  # OperatorPDCholesky ignores the upper triangle.
+  operator = OperatorPDCholesky(chol)
+  ```
+
+  Example of heteroskedastic 2-D linear regression.
+
+  ```python
+  # Get a trainable Cholesky factor.
+  matrix_values = tf.contrib.layers.fully_connected(activations, 4)
+  matrix = tf.reshape(matrix_values, (batch_size, 2, 2))
+  chol = batch_matrix_diag_transform(matrix, transform=tf.nn.softplus)
+
+  # Get a trainable mean.
+  mu = tf.contrib.layers.fully_connected(activations, 2)
+
+  # This is a fully trainable multivariate normal!
+  dist = tf.contrib.distributions.MVNCholesky(mu, chol)
+
+  # Standard log loss.  Minimizing this will "train" mu and chol, and then dist
+  # will be a distribution predicting labels as multivariate Gaussians.
+  loss = -1 * tf.reduce_mean(dist.log_pdf(labels))
+  ```
+
+  Args:
+    matrix:  Rank `R` `Tensor`, `R >= 2`, where the last two dimensions are
+      equal.
+    transform:  Element-wise function mapping `Tensors` to `Tensors`.  To
+      be applied to the diagonal of `matrix`.  If `None`, `matrix` is returned
+      unchanged.  Defaults to `None`.
+    name:  A name to give created ops.
+      Defaults to "batch_matrix_diag_transform".
+
+  Returns:
+    A `Tensor` with same shape and `dtype` as `matrix`.
+  """
+  with ops.name_scope(name, "batch_matrix_diag_transform", [matrix]):
+    matrix = ops.convert_to_tensor(matrix, name="matrix")
+    if transform is None:
+      return matrix
+    # Replace the diag with transformed diag.
+    diag = array_ops.batch_matrix_diag_part(matrix)
+    transformed_diag = transform(diag)
+    transformed_mat = array_ops.batch_matrix_set_diag(matrix, transformed_diag)
+
+  return transformed_mat

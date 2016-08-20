@@ -164,9 +164,8 @@ class Word2Vec(object):
     self.build_graph()
     self.build_eval_graph()
     self.save_vocab()
-    self._read_analogies()
 
-  def _read_analogies(self):
+  def read_analogies(self):
     """Reads through the analogy question file.
 
     Returns:
@@ -248,7 +247,7 @@ class Word2Vec(object):
     true_logits = tf.reduce_sum(tf.mul(example_emb, true_w), 1) + true_b
 
     # Sampled logits: [batch_size, num_sampled]
-    # We replicate sampled noise lables for all examples in the batch
+    # We replicate sampled noise labels for all examples in the batch
     # using the matmul.
     sampled_b_vec = tf.reshape(sampled_b, [opts.num_samples])
     sampled_logits = tf.matmul(example_emb,
@@ -447,7 +446,11 @@ class Word2Vec(object):
     # How many questions we get right at precision@1.
     correct = 0
 
-    total = self._analogy_questions.shape[0]
+    try:
+        total = self._analogy_questions.shape[0]
+    except AttributeError as e:
+        raise AttributeError("Need to read analogy questions.")
+
     start = 0
     while start < total:
       limit = start + 2500
@@ -509,6 +512,7 @@ def main(_):
   with tf.Graph().as_default(), tf.Session() as session:
     with tf.device("/cpu:0"):
       model = Word2Vec(opts, session)
+      model.read_analogies() # Read analogy questions
     for _ in xrange(opts.epochs_to_train):
       model.train()  # Process one epoch
       model.eval()  # Eval analogies.
