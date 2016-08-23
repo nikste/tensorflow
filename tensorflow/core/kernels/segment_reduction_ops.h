@@ -36,14 +36,14 @@ namespace tensorflow {
 // 'data_size': size of input data tensor.
 // 'data': input data tensor.
 // 'output': output reshaped to {output_rows, output.size/output_rows}
-//template <typename Device, typename T, typename Index>
-//struct UnsortedSegmentSumFunctor {
-//  void operator()(OpKernelContext* ctx, const Device& d,
-//                  const Index output_rows, const TensorShape& segment_ids_shape,
-//                  typename TTypes<Index>::ConstFlat segment_ids,
-//                  const Index data_size, const T* data,
-//                  typename TTypes<T, 2>::Tensor output);
-//};
+template <typename Device, typename T, typename Index>
+struct UnsortedSegmentSumFunctor {
+  void operator()(OpKernelContext* ctx, const Device& d,
+                  const Index output_rows, const TensorShape& segment_ids_shape,
+                  typename TTypes<Index>::ConstFlat segment_ids,
+                  const Index data_size, const T* data,
+                  typename TTypes<T, 2>::Tensor output);
+};
 //// Functor for UnsortedSegmentMaxOp.
 //// 'output_rows': the number of output segments (unique segment ids in
 ////                'segment_ids').
@@ -53,23 +53,23 @@ namespace tensorflow {
 //// 'data_size': size of input data tensor.
 //// 'data': input data tensor.
 //// 'output': output reshaped to {output_rows, output.size/output_rows}
-//template <typename Device, typename T, typename Index>
-//struct UnsortedSegmentMaxFunctor {
-//  void operator()(OpKernelContext* ctx, const Device& d,
-//                  const Index output_rows, const TensorShape& segment_ids_shape,
-//                  typename TTypes<Index>::ConstFlat segment_ids,
-//                  const Index data_size, const T* data,
-//                  typename TTypes<T, 2>::Tensor output);
-//};
-        template <typename Device, typename T, typename Index, void(*unsortedSegmentInitializationOp)(Eigen::TensorMap<Eigen::Tensor<T, 2, 1, long int>, 16>*), void(*unsortedSegmentReductionOp)(Eigen::TensorMap<Eigen::Tensor<const T,2,1,long int>, 16>*, Eigen::TensorMap<Eigen::Tensor<T,2,1,long int>, 16>*, int64, Index)>
-        struct UnsortedSegmentBaseFunctor {
-            void operator()(OpKernelContext* ctx, const Device& d,
-                            const Index output_rows, const TensorShape& segment_ids_shape,
-                            typename TTypes<Index>::ConstFlat segment_ids,
-                            const Index data_size, const T* data,
-                            typename TTypes<T, 2>::Tensor output);
-        };
-    }  // namespace functor
+template <typename Device, typename T, typename Index>
+struct UnsortedSegmentMaxFunctor {
+  void operator()(OpKernelContext* ctx, const Device& d,
+                  const Index output_rows, const TensorShape& segment_ids_shape,
+                  typename TTypes<Index>::ConstFlat segment_ids,
+                  const Index data_size, const T* data,
+                  typename TTypes<T, 2>::Tensor output);
+};
+template <typename Device, typename T, typename Index, void(*unsortedSegmentInitializationOp)(Eigen::TensorMap<Eigen::Tensor<T, 2, 1, long int>, 16>*), void(*unsortedSegmentReductionOp)(Eigen::TensorMap<Eigen::Tensor<const T,2,1,long int>, 16>*, Eigen::TensorMap<Eigen::Tensor<T,2,1,long int>, 16>*, int64, Index)>
+struct UnsortedSegmentBaseFunctor {
+    void operator()(OpKernelContext* ctx, const Device& d,
+                    const Index output_rows, const TensorShape& segment_ids_shape,
+                    typename TTypes<Index>::ConstFlat segment_ids,
+                    const Index data_size, const T* data,
+                    typename TTypes<T, 2>::Tensor output);
+};
+}  // namespace functor
 }  // namespace tensorflow
 
 #endif  // THIRD_PARTY_TENSORFLOW_CORE_KERNELS_SEGMENT_REDUCTION_OPS_H_

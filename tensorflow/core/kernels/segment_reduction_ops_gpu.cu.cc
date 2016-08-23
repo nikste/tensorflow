@@ -63,7 +63,6 @@ __global__ void UnsortedSegmentMaxCustomKernel(
   const Index input_total_size = input_outer_dim_size * inner_dim_size;
   const Index output_total_size = output_outer_dim_size * inner_dim_size;
   CUDA_1D_KERNEL_LOOP(input_index, input_total_size) {
-    //TODO: FIX FOR FIND MAX!
     const Index input_segment_index = input_index / inner_dim_size;
     const Index segment_offset = input_index % inner_dim_size;
     const Index output_segment_index = segment_ids[input_segment_index];
@@ -73,9 +72,7 @@ __global__ void UnsortedSegmentMaxCustomKernel(
     }
     const Index output_index =
         output_segment_index * inner_dim_size + segment_offset;
-    //TODO: use cudaAtomicMax()
     CudaAtomicMax(output + output_index, ldg(input + input_index));
-//    CudaAtomicAdd(output + output_index, ldg(input + input_index));
   }
 }
 
@@ -89,11 +86,14 @@ struct UnsortedSegmentSumFunctor<GPUDevice, T, Index> {
                   typename TTypes<Index>::ConstFlat segment_ids,
                   const Index data_size, const T* data,
                   typename TTypes<T, 2>::Tensor output) {
+    if (output.size() == 0) {
+      return;
+    }
     // Set 'output' to zeros.
     CudaLaunchConfig config = GetCudaLaunchConfig(output.size(), d);
     SetZero<<<config.block_count, config.thread_per_block, 0, d.stream()>>>(
         output.size(), output.data());
-    if (data_size == 0) {
+    if (data_size == 0 || segment_ids_shape.num_elements() == 0) {
       return;
     }
 
@@ -113,6 +113,7 @@ struct UnsortedSegmentSumFunctor<GPUDevice, T, Index> {
         input_outer_dim_size, input_inner_dim_size, output_rows,
         segment_ids.data(), data, output.data());
   }
+};
 
 // UnsortedSegmentMaxFunctor implementation for GPUDevice.
 template <typename T, typename Index>
@@ -122,15 +123,18 @@ struct UnsortedSegmentMaxFunctor<GPUDevice, T, Index> {
                   typename TTypes<Index>::ConstFlat segment_ids,
                   const Index data_size, const T* data,
                   typename TTypes<T, 2>::Tensor output) {
-    // Set 'output' to numeric_limit<T>.
+    if (output.size() == 0) {
+      return;
+    }
+    // Set 'output' to zeros.
     CudaLaunchConfig config = GetCudaLaunchConfig(output.size(), d);
-    SetConstant<<<config.block_count, config.thread_per_block, 0, d.stream()>>>(
-        std::numeric_limits<T>::min(),output.size(), output.data());
-    if (data_size == 0) {
+    SetZero<<<config.block_count, config.thread_per_block, 0, d.stream()>>>(
+        output.size(), output.data());
+    if (data_size == 0 || segment_ids_shape.num_elements() == 0) {
       return;
     }
 
-    // Launch kernel to compute unsorted segment max.
+    // Launch kernel to compute unsorted segment Max.
     // Notes:
     // *) 'input_total_size' is the total number of elements to process.
     // *) 'segment_ids.shape' is a prefix of data's shape.
@@ -148,18 +152,29 @@ struct UnsortedSegmentMaxFunctor<GPUDevice, T, Index> {
   }
 };
 
-#define DEFINE_GPU_SPECS_INDEX(T, Index) \
-  template struct UnsortedSegmentSumFunctor<GPUDevice, T, Index> \
+#define DEFINE_GPU_SPECS_INDEX_SUM(T, Index) \
+  template struct UnsortedSegmentSumFunctor<GPUDevice, T, Index>
+
+#define DEFINE_GPU_SPECS_INDEX_MAX(T, Index) \
   template struct UnsortedSegmentMaxFunctor<GPUDevice, T, Index>
 
-#define DEFINE_GPU_SPECS(T)         \
-  DEFINE_GPU_SPECS_INDEX(T, int32); \
-  DEFINE_GPU_SPECS_INDEX(T, int64);
+#define DEFINE_GPU_SPECS_NO_HALF(T)         \
+  DEFINE_GPU_SPECS_INDEX_SUM(T, int32); \
+  DEFINE_GPU_SPECS_INDEX_SUM(T, int64); \
+  DEFINE_GPU_SPECS_INDEX_MAX(T, int32); \
+  DEFINE_GPU_SPECS_INDEX_MAX(T, int64);
 
-TF_CALL_GPU_NUMBER_TYPES(DEFINE_GPU_SPECS);
+//#define DEFINE_GPU_SPECS(T)\
+//  DEFINE_GPU_SPECS_INDEX_SUM(T, int32); \
+//  DEFINE_GPU_SPECS_INDEX_SUM(T, int64);
 
-#undef DEFINE_GPU_SPECS
-#undef DEFINE_GPU_SPECS_INDEX
+//TF_CALL_GPU_NUMBER_TYPES_NO_HALF(DEFINE_GPU_SPECS_NO_HALF)
+//TF_CALL_GPU_NUMBER_TYPES(DEFINE_GPU_SPECS);
+TF_CALL_INTEGRAL_TYPES(DEFINE_GPU_SPECS_NO_HALF)
+//#undef DEFINE_GPU_SPECS
+#undef DEFINE_GPU_SPECS_NO_HALF
+#undef DEFINE_GPU_SPECS_INDEX_MAX
+#undef DEFINE_GPU_SPECS_INDEX_SUM
 
 }  // namespace functor
 }  // namespace tensorflow
