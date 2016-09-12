@@ -221,7 +221,7 @@ namespace functor {
 
 // UnsortedSegmentSumFunctor implementation for CPUDevice.
 template <typename T, typename Index>
-struct UnsortedSegmentSumFunctor<CPUDevice, T, Index> {
+struct UnsortedSegmentSumFunctor<CPUDevice, T, Index> : UnsortedSegmentBaseFunctor<CPUDevice, T, Index> {
   void operator()(OpKernelContext* ctx, const CPUDevice& d,
                   const Index output_rows, const TensorShape& segment_ids_shape,
                   typename TTypes<Index>::ConstFlat segment_ids,
@@ -245,7 +245,7 @@ struct UnsortedSegmentSumFunctor<CPUDevice, T, Index> {
 };
 // UnsortedSegmentMaxFunctor implementation for CPUDevice.
 template <typename T, typename Index>
-struct UnsortedSegmentMaxFunctor<CPUDevice, T, Index> {
+struct UnsortedSegmentMaxFunctor<CPUDevice, T, Index>: UnsortedSegmentBaseFunctor<CPUDevice, T, Index> {
   void operator()(OpKernelContext* ctx, const CPUDevice& d,
                   const Index output_rows, const TensorShape& segment_ids_shape,
                   typename TTypes<Index>::ConstFlat segment_ids,
@@ -273,10 +273,10 @@ struct UnsortedSegmentMaxFunctor<CPUDevice, T, Index> {
 
 // Base class for SegmentreductionOps that can handle unsorted segment definitions
 // and specifying the size of the output in addition to a reduction function
-template <typename Device, class T, class Index, class Functype>
+template <typename Device, class T, class Index>
 class UnsortedSegmentBaseOp : public OpKernel {
  public:
-  explicit UnsortedSegmentBaseOp(OpKernelConstruction* context, Functype f)
+  explicit UnsortedSegmentBaseOp(OpKernelConstruction* context, functor::UnsortedSegmentBaseFunctor<Device, T, Index>* f)
       : OpKernel(context), ReductionFunction(f) {}
 
   void Compute(OpKernelContext* context) override {
@@ -313,30 +313,28 @@ class UnsortedSegmentBaseOp : public OpKernel {
     auto output_flat = output->flat_outer_dims<T>();
 
     auto data_ptr = data.template flat<T>().data();
-    ReductionFunction(context, context->template eigen_device<Device>(), output_rows,
+      (*ReductionFunction)(context, context->template eigen_device<Device>(), output_rows,
         segment_ids.shape(), segment_flat, data.NumElements(), data_ptr,
         output_flat);
   }
 private:
-  Functype ReductionFunction;
+  std::unique_ptr<functor::UnsortedSegmentBaseFunctor<Device, T, Index>> ReductionFunction;
 };
 
 template <typename Device, class T, class Index>
 class UnsortedSegmentSumOp
-  : public UnsortedSegmentBaseOp<Device, T, Index,
-                                   functor::UnsortedSegmentSumFunctor<Device, T, Index>> {
+  : public UnsortedSegmentBaseOp<Device, T, Index> {
 public:
   explicit UnsortedSegmentSumOp(OpKernelConstruction* context)
-    : UnsortedSegmentBaseOp<Device, T, Index, functor::UnsortedSegmentSumFunctor<Device, T, Index>>(context, functor::UnsortedSegmentSumFunctor<Device, T, Index>()) {}
+    : UnsortedSegmentBaseOp<Device, T, Index>(context, new functor::UnsortedSegmentSumFunctor<Device, T, Index>()) {}
 };
 
 template <typename Device, class T, class Index>
 class UnsortedSegmentMaxOp
-  : public UnsortedSegmentBaseOp<Device, T, Index,
-                functor::UnsortedSegmentMaxFunctor<Device, T, Index>> {
+  : public UnsortedSegmentBaseOp<Device, T, Index> {
 public:
   explicit UnsortedSegmentMaxOp(OpKernelConstruction* context)
-    : UnsortedSegmentBaseOp<Device, T, Index,functor::UnsortedSegmentMaxFunctor<Device, T, Index>>(context, functor::UnsortedSegmentMaxFunctor<Device, T, Index>()) {}
+    : UnsortedSegmentBaseOp<Device, T, Index>(context, new functor::UnsortedSegmentMaxFunctor<Device, T, Index>()) {}
 };
 
 #define REGISTER_REAL_CPU_UNSORTED_KERNELS(type, index_type)                  \
