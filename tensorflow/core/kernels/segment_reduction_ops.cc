@@ -226,7 +226,7 @@ struct UnsortedSegmentSumFunctor<CPUDevice, T, Index> : UnsortedSegmentBaseFunct
                   const Index output_rows, const TensorShape& segment_ids_shape,
                   typename TTypes<Index>::ConstFlat segment_ids,
                   const Index data_size, const T* data,
-                  typename TTypes<T, 2>::Tensor output) {
+                  typename TTypes<T, 2>::Tensor output) override {
     output.setZero();
     if (data_size == 0) {
       return;
@@ -250,7 +250,7 @@ struct UnsortedSegmentMaxFunctor<CPUDevice, T, Index>: UnsortedSegmentBaseFuncto
                   const Index output_rows, const TensorShape& segment_ids_shape,
                   typename TTypes<Index>::ConstFlat segment_ids,
                   const Index data_size, const T* data,
-                  typename TTypes<T, 2>::Tensor output) {
+                  typename TTypes<T, 2>::Tensor output) override {
     output.setConstant(std::numeric_limits<T>::min());
     if (data_size == 0) {
       return;
@@ -274,10 +274,10 @@ struct UnsortedSegmentMaxFunctor<CPUDevice, T, Index>: UnsortedSegmentBaseFuncto
 // Base class for SegmentreductionOps that can handle unsorted segment definitions
 // and specifying the size of the output in addition to a reduction function
 template <typename Device, class T, class Index>
-class UnsortedSegmentBaseOp : public OpKernel {
+class UnsortedSegmentBaseOp : public OpKernel, public functor::UnsortedSegmentBaseFunctor<Device, T, Index> {
  public:
-  explicit UnsortedSegmentBaseOp(OpKernelConstruction* context, functor::UnsortedSegmentBaseFunctor<Device, T, Index>* f)
-      : OpKernel(context), ReductionFunction(f) {}
+  explicit UnsortedSegmentBaseOp(OpKernelConstruction* context)
+      : OpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
     const Tensor& data = context->input(0);
@@ -313,12 +313,10 @@ class UnsortedSegmentBaseOp : public OpKernel {
     auto output_flat = output->flat_outer_dims<T>();
 
     auto data_ptr = data.template flat<T>().data();
-      (*ReductionFunction)(context, context->template eigen_device<Device>(), output_rows,
+      this->operator()(context, context->template eigen_device<Device>(), output_rows,
         segment_ids.shape(), segment_flat, data.NumElements(), data_ptr,
         output_flat);
   }
-private:
-  std::unique_ptr<functor::UnsortedSegmentBaseFunctor<Device, T, Index>> ReductionFunction;
 };
 
 template <typename Device, class T, class Index>
@@ -326,7 +324,16 @@ class UnsortedSegmentSumOp
   : public UnsortedSegmentBaseOp<Device, T, Index> {
 public:
   explicit UnsortedSegmentSumOp(OpKernelConstruction* context)
-    : UnsortedSegmentBaseOp<Device, T, Index>(context, new functor::UnsortedSegmentSumFunctor<Device, T, Index>()) {}
+    : UnsortedSegmentBaseOp<Device, T, Index>(context) {}
+
+    void operator()(OpKernelContext* ctx, const CPUDevice& d,
+                    const Index output_rows, const TensorShape& segment_ids_shape,
+                    typename TTypes<Index>::ConstFlat segment_ids,
+                    const Index data_size, const T* data,
+                    typename TTypes<T, 2>::Tensor output){
+      functor::UnsortedSegmentSumFunctor<Device, T, Index>()(ctx, d, output_rows, segment_ids_shape, segment_ids,
+                                                             data_size, data, output);
+    }
 };
 
 template <typename Device, class T, class Index>
@@ -334,7 +341,16 @@ class UnsortedSegmentMaxOp
   : public UnsortedSegmentBaseOp<Device, T, Index> {
 public:
   explicit UnsortedSegmentMaxOp(OpKernelConstruction* context)
-    : UnsortedSegmentBaseOp<Device, T, Index>(context, new functor::UnsortedSegmentMaxFunctor<Device, T, Index>()) {}
+    : UnsortedSegmentBaseOp<Device, T, Index>(context) {}
+
+    void operator()(OpKernelContext* ctx, const CPUDevice& d,
+                    const Index output_rows, const TensorShape& segment_ids_shape,
+                    typename TTypes<Index>::ConstFlat segment_ids,
+                    const Index data_size, const T* data,
+                    typename TTypes<T, 2>::Tensor output){
+      functor::UnsortedSegmentMaxFunctor<Device, T, Index>()(ctx, d, output_rows, segment_ids_shape, segment_ids,
+                                                             data_size, data, output);
+    }
 };
 
 #define REGISTER_REAL_CPU_UNSORTED_KERNELS(type, index_type)                  \
