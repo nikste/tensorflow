@@ -310,6 +310,8 @@ add_python_module("tensorflow/contrib/learn/python/learn/tests")
 add_python_module("tensorflow/contrib/learn/python/learn/tests/dataframe")
 add_python_module("tensorflow/contrib/learn/python/learn/utils")
 add_python_module("tensorflow/contrib/legacy_seq2seq")
+add_python_module("tensorflow/contrib/legacy_seq2seq/python")
+add_python_module("tensorflow/contrib/legacy_seq2seq/python/ops")
 add_python_module("tensorflow/contrib/linalg")
 add_python_module("tensorflow/contrib/linalg/python")
 add_python_module("tensorflow/contrib/linalg/python/ops")
@@ -335,6 +337,9 @@ add_python_module("tensorflow/contrib/metrics/python/metrics")
 add_python_module("tensorflow/contrib/metrics/python/ops")
 add_python_module("tensorflow/contrib/ndlstm")
 add_python_module("tensorflow/contrib/ndlstm/python")
+add_python_module("tensorflow/contrib/nn")
+add_python_module("tensorflow/contrib/nn/python")
+add_python_module("tensorflow/contrib/nn/python/ops")
 add_python_module("tensorflow/contrib/opt")
 add_python_module("tensorflow/contrib/opt/python")
 add_python_module("tensorflow/contrib/opt/python/training")
@@ -489,7 +494,6 @@ GENERATE_PYTHON_OP_LIB("image_ops")
 GENERATE_PYTHON_OP_LIB("io_ops")
 GENERATE_PYTHON_OP_LIB("linalg_ops")
 GENERATE_PYTHON_OP_LIB("logging_ops")
-GENERATE_PYTHON_OP_LIB("losses")
 GENERATE_PYTHON_OP_LIB("nn_ops")
 GENERATE_PYTHON_OP_LIB("parsing_ops")
 GENERATE_PYTHON_OP_LIB("random_ops")
@@ -512,6 +516,8 @@ GENERATE_PYTHON_OP_LIB("contrib_factorization_factorization_ops"
   DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/factorization/python/ops/gen_factorization_ops.py)
 GENERATE_PYTHON_OP_LIB("contrib_framework_variable_ops"
   DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/framework/python/ops/gen_variable_ops.py)
+GENERATE_PYTHON_OP_LIB("contrib_tensor_forest_ops"
+	  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/tensor_forest/python/ops/gen_tensor_forest_ops.py)
 
 add_custom_target(tf_python_ops SOURCES ${tf_python_ops_generated_files} ${PYTHON_PROTO_GENFILES})
 add_dependencies(tf_python_ops tf_python_op_gen_main)
@@ -578,6 +584,7 @@ add_library(pywrap_tensorflow SHARED
     $<TARGET_OBJECTS:tf_core_direct_session>
     $<$<BOOL:${tensorflow_ENABLE_GRPC_SUPPORT}>:$<TARGET_OBJECTS:tf_core_distributed_runtime>>
     $<TARGET_OBJECTS:tf_core_kernels>
+    $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_core_kernels_cpu_only>>
     $<$<BOOL:${tensorflow_ENABLE_GPU}>:$<TARGET_OBJECTS:tf_stream_executor>>
 )
 target_include_directories(pywrap_tensorflow PUBLIC
@@ -641,6 +648,20 @@ add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/tensorboard_external
                                              ${CMAKE_CURRENT_BINARY_DIR}/tf_python/external)
 
+# Copy datasets for tf.contrib.learn.
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/boston_house_prices.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/iris.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/text_test.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${tensorflow_source_dir}/tensorflow/contrib/learn/python/learn/datasets/data/text_train.csv
+                                   ${CMAKE_CURRENT_BINARY_DIR}/tf_python/tensorflow/contrib/learn/python/learn/datasets/data/)
+					   
 if(${tensorflow_ENABLE_GPU})
   add_custom_command(TARGET tf_python_build_pip_package POST_BUILD
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/tf_python/setup.py bdist_wheel --project_name tensorflow_gpu
